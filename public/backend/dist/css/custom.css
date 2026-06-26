@@ -1,0 +1,63 @@
+.nom_produit, .quantite, .prix, .montant, .restant, .total, .btnNew{
+    height: 55px;
+    font-size: 30px;
+    font-weight: bold;
+    padding: 5px;
+}
+
+.code_barre{
+    height: 45px;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 5px;
+}
+
+.btnNew{
+    height: 50px;
+    font-size: 25px;
+    font-weight: bold;
+    padding: 5px;
+}
+
+.modal-head{
+    background-color: #343a40;
+    color: #ffffff;
+}
+
+.clt-btn {
+    cursor: pointer;
+    color: #28a745;
+
+}
+
+.clt-btn:hover {
+    cursor: pointer;
+    color: #20c997;
+}
+
+.info-box{
+    height: 90%;
+}
+
+/*   */
+/* Target the Select2 input */
+.select2-container .select2-selection--single {
+    height: 45px;
+    /* Set the desired height */
+    font-size: 20px;
+    /* Set the desired font size */
+}
+
+/* Optional: Adjust the arrow position */
+.select2-container .select2-selection__arrow {
+    height: 45px;
+    /* Match the height of the input */
+}
+
+/* Optional: Adjust the dropdown list styles */
+.select2-container .select2-dropdown {
+    font-size: 20px;
+    /* Set the desired font size */
+    max-height: auto;
+    /* Set the maximum height of the dropdown */
+}

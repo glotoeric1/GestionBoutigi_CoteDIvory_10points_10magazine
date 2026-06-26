@@ -1,0 +1,162 @@
+@extends('layout.main')
+
+@section('main')
+    <div class="row justify-content-center">
+        <div class="col-lg-12">
+
+            <div class="card card-primary shadow-lg">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-user-plus mr-2"></i>
+                        <strong>Ajout d'un client</strong>
+                    </h3>
+                </div>
+
+                <form action="{{ route('client.store') }}" method="post">
+                    @csrf
+
+                    <div class="card-body">
+
+                        <div class="row">
+
+                            <!-- Nom -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Nom complet</label>
+
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-user"></i>
+                                            </span>
+                                        </div>
+
+                                        <input type="nom" name="nom" class="form-control @error('nom') is-invalid @enderror"
+                                            placeholder="Nom du client">
+
+                                    </div>
+
+                                    @error('nom')
+                                        <small class="text-danger">{{ $message }}</small>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <!-- Contact -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Contact</label>
+
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-phone"></i>
+                                            </span>
+                                        </div>
+
+                                        <input type="contact" name="contact"
+                                            class="form-control @error('contact') is-invalid @enderror"
+                                            placeholder="Numéro de téléphone">
+                                    </div>
+
+                                    @error('contact')
+                                        <small class="text-danger">{{ $message }}</small>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <!-- Adresse -->
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Adresse</label>
+
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-map-marker-alt"></i>
+                                            </span>
+                                        </div>
+
+                                        <input type="text" name="adresse"
+                                            class="form-control @error('adresse') is-invalid @enderror"
+                                            placeholder="Adresse du client" value="{{ old('adresse') }}">
+                                    </div>
+
+                                    @error('adresse')
+                                        <small class="text-danger">{{ $message }}</small>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <!-- Email -->
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Email</label>
+
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-envelope"></i>
+                                            </span>
+                                        </div>
+
+                                        <input type="email" name="email"
+                                            class="form-control @error('email') is-invalid @enderror"
+                                            placeholder="email@example.com" value="{{ old('email') }}">
+                                    </div>
+
+                                    @error('email')
+                                        <small class="text-danger">{{ $message }}</small>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <!-- Limite de Crédit -->
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Limite de Crédit</label>
+
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-credit-card"></i>
+                                            </span>
+                                        </div>
+
+                                        <input type="number" name="credit_limit"
+                                            class="form-control @error('credit_limit') is-invalid @enderror"
+                                            placeholder="0.00" min="0" step="0.01" value="{{ old('credit_limit', 0) }}">
+                                    </div>
+
+                                    @error('credit_limit')
+                                        <small class="text-danger">{{ $message }}</small>
+                                    @enderror
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="card-footer bg-light">
+                        <div class="d-flex justify-content-end">
+
+                            <a href="{{ route('client.index') }}" class="btn btn-outline-secondary rounded-pill px-4 mr-2">
+                                <i class="fas fa-times mr-1"></i>
+                                Annuler
+                            </a>
+
+                            <button type="submit" class="btn btn-primary rounded-pill px-4">
+                                <i class="fas fa-save mr-1"></i>
+                                Enregistrer
+                            </button>
+
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+        </div>
+    </div>
+@endsection
