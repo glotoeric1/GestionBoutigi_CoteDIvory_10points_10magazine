@@ -61,8 +61,8 @@ class ProductBoutigue extends Model
 
         //dd('Product Id : ' . $prodId, ' Boutigi : ' . $boutiqueId);
         $product = self::where('id_prod', $prodId)
-            ->where('id_boutique', $boutiqueId)
-            //->lockForUpdate()
+            //->where('id_boutique', $boutiqueId)
+            ->lockForUpdate()
             ->first();
         dd($product);
 
