@@ -700,7 +700,7 @@ class VenteController extends Controller
                 ]);
 
 
-                dd($boutiqueId . ' pROD : ' . $item['prod'], );
+                //dd($boutiqueId . ' pROD : ' . $item['prod'], );
                 ProductBoutigue::updateStock(
                     $item['prod'],
                     $boutiqueId,
