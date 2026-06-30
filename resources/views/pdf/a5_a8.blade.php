@@ -23,7 +23,8 @@
         $logo = $setting->logo2 ?? $logo;
     }
 
-    $boutique = auth()->user() != null && auth()->user()->roles == 'Super Admin'
+    $boutique = auth()->user() != null &&
+        auth()->user()->roles == 'Super Admin'
         ? \App\Models\Boutique::find(session('selected_boutique_id'))
         : \App\Models\Boutique::find(auth()->user() ? auth()->user()->id_boutigue : $data->id_boutique);
 
@@ -31,43 +32,26 @@
         $logo = $boutique->logo ? public_path($boutique->logo) : $logo;
     }
 
-    // Convert logo to a usable asset URL (for PDF/HTML)
-    $logoUrl = filter_var($logo, FILTER_VALIDATE_URL) ? $logo : asset($logo);
+    // ---------- Paper size (set to 'A5', 'A6', 'A7', or 'A8') ----------
+    $paperSize = $paperSize ?? 'A6';   // default: A6 (similar to thermal receipt width)
+    $maxWidths = [
+        'A5' => '420px',
+        'A6' => '300px',
+        'A7' => '210px',
+        'A8' => '150px',
+    ];
+    $containerWidth = $maxWidths[$paperSize] ?? '300px';
 
-    // ---------- Prepare common data ----------
-    $date_hr = $date_hr ?? now();
-    $nom = $nom ?? '—';
-    $contact = $contact ?? '—';
-    $username = $username ?? '';
-    $amountInWords = $amountInWords ?? '';
-
-    // For invoice totals
-    $total_ht = $total_ht ?? 0;
-    $reduction = $reduction ?? 0;
-    $tva = $tva ?? 0;
-    $total_tva = $total_tva ?? 0;
-    $total_ttc = $total_ttc ?? 0;
-
-    // Determine which cart data to use
-    $cartItems = [];
-    if ($operation != 'update') {
-        $cartItems = session('cart', []);
-    } else {
-        // $carts is the collection from DB (used in old code)
-        $cartItems = $carts ?? [];
+    // ---------- Helper to format amount in words (if not already defined) ----------
+    if (!function_exists('numberToWords')) {
+        function numberToWords($number)
+        {
+            // You can keep your existing 'ucfirst($amountInWords)' logic.
+            // For simplicity, we just return the number with currency.
+            return number_format($number) . ' ' . ($cc ?? 'FCFA');
+        }
     }
-
-    // Helper to format currency
-    function fmt($number)
-    {
-        return number_format($number) . ' Fcfa';
-    }
-
-    // Helper to print a dashed line
-    function dashedLine()
-    {
-        return '<div style="border-top: 1px dashed #000; margin: 6px 0;"></div>';
-    }
+    $amountInWords = $amountInWords ?? numberToWords($total_ht);
 @endphp
 
 <!DOCTYPE html>
@@ -76,50 +60,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facture_vente_&_Bon_livraison_n°{{ $num_vente }}</title>
+    <title>Facture & Bon de livraison - {{ $num_vente ?? 'N°' }}</title>
     <style>
-        /* Print-friendly reset */
-        body {
+        /* Print and screen styles */
+        * {
             margin: 0;
-            padding: 10px;
-            background: #eee;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .receipt-page {
             background: #fff;
-            width: 300px;
-            margin: 0 auto 20px auto;
-            padding: 8px;
-            font-family: 'Courier New', monospace;
+            padding: 10px 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width:
+                {{ $containerWidth }}
+            ;
             font-size: 12px;
             color: #000;
             page-break-after: always;
+            /* for printing */
         }
 
-        @media print {
-            body {
-                background: #fff;
-            }
-
-            .receipt-page {
-                margin: 0 auto;
-                page-break-after: always;
-            }
+        .receipt-page:last-child {
+            page-break-after: auto;
         }
 
-        /* Flex helpers */
+        /* Keep all lines inside the container */
+        .receipt-page * {
+            max-width: 100%;
+        }
+
+        .divider {
+            border-top: 1px dashed #000;
+            margin: 6px 0;
+        }
+
         .flex-row {
             display: flex;
             justify-content: space-between;
         }
 
-        .flex-end {
-            display: flex;
-            justify-content: flex-end;
-        }
-
         .text-center {
             text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
         }
 
         .fw-bold {
@@ -130,202 +128,217 @@
             margin-top: 4px;
         }
 
-        .mt-2 {
-            margin-top: 8px;
-        }
-
         .mb-1 {
             margin-bottom: 4px;
         }
 
-        .mb-2 {
-            margin-bottom: 8px;
-        }
-
-        .small {
+        .fs-small {
             font-size: 10px;
         }
 
-        .large {
-            font-size: 14px;
+        .fs-large {
+            font-size: 15px;
         }
 
-        .xlarge {
-            font-size: 16px;
+        .indent {
+            padding-left: 12px;
+        }
+
+        /* For signature lines */
+        .signature-line {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+        }
+
+        .signature-line span {
+            border-top: 1px solid #000;
+            padding-top: 4px;
+            width: 45%;
+            text-align: center;
         }
     </style>
 </head>
 
 <body>
 
-    {{-- ============================================================= --}}
-    {{-- PAGE 1 : BORDEREAU DE LIVRAISON (only if cart exists) --}}
-    {{-- ============================================================= --}}
-    @if (session('cart') && count(session('cart')) > 0)
+    {{-- ============================================================
+    PAGE 1 : BORDEREAU DE LIVRAISON (if cart exists)
+    ============================================================ --}}
+    @if (session('cart'))
         <div class="receipt-page">
-            {{-- HEADER --}}
-            <div class="text-center mb-2">
-                @if($logoUrl)
-                    <img src="{{ $logoUrl }}" alt="Logo"
+            {{-- Header --}}
+            <div class="text-center mb-1">
+                @if($logo)
+                    <img src="{{ $logo }}" alt="Logo"
                         style="max-width:100%; height:auto; max-height:60px; display:block; margin:0 auto 5px;">
                 @endif
-                <div class="fw-bold large">{{ strtoupper($entreprise) }}</div>
+                <div class="fw-bold fs-large">{{ strtoupper($entreprise) }}</div>
                 @if($address)
-                    <div class="small">{{ strtoupper($address) }}</div>
+                    <div>{{ strtoupper($address) }}</div>
                 @endif
-                <div class="small">Tél : {{ $contacts }}</div>
-                <div class="fw-bold xlarge mt-1">BORDEREAU DE LIVRAISON</div>
-                <div>N°: {{ $num_liv }}</div>
-                <div class="small">Fait le : {{ $date_hr }}</div>
+                <div>Tél : {{ $contacts }}</div>
+                <div class="fw-bold fs-large" style="margin-top:4px;">BORDEREAU DE LIVRAISON</div>
+                <div>N°: {{ $num_liv ?? '—' }}</div>
+                <div>Fait le : {{ $date_hr ?? now() }}</div>
             </div>
 
-            {!! dashedLine() !!}
+            <div class="divider"></div>
 
-            {{-- CLIENT & POINT DE VENTE --}}
+            {{-- Client & Point de vente --}}
             <div>
-                <div class="flex-row"><span>Pointe de vente :</span><span>{{ $boutique->nom_boutique ?? '' }}</span></div>
-                <div class="flex-row"><span>Client :</span><span>{{ $nom }}</span></div>
-                <div class="flex-row"><span>Contact :</span><span>{{ $contact }}</span></div>
+                <div class="flex-row"><span>Pointe de vente :</span><span>{{ $boutique->nom_boutique ?? '—' }}</span></div>
+                <div class="flex-row"><span>Client :</span><span>{{ $nom ?? '—' }}</span></div>
+                <div class="flex-row"><span>Contact :</span><span>{{ $contact ?? '—' }}</span></div>
             </div>
 
-            {!! dashedLine() !!}
+            <div class="divider"></div>
 
-            {{-- ARTICLES --}}
+            {{-- Articles (with quantity, provenance) --}}
             <div>
-                <div class="flex-row fw-bold small"
+                <div class="flex-row fw-bold fs-small"
                     style="border-bottom:1px dotted #000; padding-bottom:2px; margin-bottom:4px;">
                     <span>Désignation</span>
-                    <span>Provenance / Qté / Valider</span>
+                    <span>Provenance / Qté</span>
                 </div>
-                @foreach ($cartItems as $item)
+                @foreach (session('cart') as $cart)
                     <div class="flex-row">
-                        <span>{{ $item['produit'] ?? $item->ShowProdNameVente($item->id_prod) }}</span>
-                        <span>{{ $item['nom_stock'] ?? $item->nom_stock ?? '-' }}</span>
+                        <span>{{ $cart['produit'] }}</span>
+                        <span>{{ $cart['nom_stock'] ?? '-' }} / {{ $cart['qte'] }}</span>
                     </div>
-                    <div class="flex-end small mb-1">
-                        <span>Qté: {{ $item['qte'] ?? $item->quantite ?? 0 }} &nbsp;&nbsp; Valider: ______</span>
+                    {{-- Optional: line for validation --}}
+                    <div class="flex-row fs-small" style="padding-left:10px;">
+                        <span>Valider : ________</span>
+                        <span></span>
                     </div>
+                    @php $somme += $cart['qte'] * $cart['prix']; @endphp
                 @endforeach
             </div>
 
-            {!! dashedLine() !!}
+            <div class="divider"></div>
 
-            {{-- SIGNATURES --}}
-            <div class="flex-row mt-2">
+            {{-- Signature area --}}
+            <div class="signature-line">
                 <span>POUR CLIENT</span>
                 <span>RECEPTIONNISTE</span>
             </div>
-            <div class="flex-row mt-1">
-                <span></span>
-                <span>{{ $username ? 'Agent: ' . $username : '' }}</span>
-            </div>
-
-            {{-- FOOTER --}}
-            @if($footer)
-                <div class="text-center small mt-2" style="border-top:1px dashed #000; padding-top:6px;">
-                    {!! $footer !!}
-                </div>
+            @if(isset($username))
+                <div class="text-right fs-small">{{ 'Agent: ' . $username }}</div>
             @endif
-            <div class="text-center mt-1" style="letter-spacing:2px;">- - - - - - - - - - - - - - - - - - - -</div>
+
+            {{-- Footer --}}
+            <div class="text-center fs-small mt-1" style="border-top:1px dashed #000; padding-top:6px;">
+                {!! $footer !!}
+            </div>
+            <div class="text-center" style="letter-spacing:2px; margin-top:6px;">- - - - - - - - - - - - - - - - - - - -
+            </div>
         </div>
     @endif
 
-    {{-- ============================================================= --}}
-    {{-- PAGE 2 : FACTURE / BON DE VENTE --}}
-    {{-- ============================================================= --}}
+    {{-- ============================================================
+    PAGE 2 : FACTURE (always displayed)
+    ============================================================ --}}
     <div class="receipt-page">
-        {{-- HEADER --}}
-        <div class="text-center mb-2">
-            @if($logoUrl)
-                <img src="{{ $logoUrl }}" alt="Logo"
+        {{-- Header --}}
+        <div class="text-center mb-1">
+            @if($logo)
+                <img src="{{ $logo }}" alt="Logo"
                     style="max-width:100%; height:auto; max-height:60px; display:block; margin:0 auto 5px;">
             @endif
-            <div class="fw-bold large">{{ strtoupper($entreprise) }}</div>
+            <div class="fw-bold fs-large">{{ strtoupper($entreprise) }}</div>
             @if($address)
-                <div class="small">{{ strtoupper($address) }}</div>
+                <div>{{ strtoupper($address) }}</div>
             @endif
-            <div class="small">Tél : {{ $contacts }}</div>
-            <div class="fw-bold xlarge mt-1">BON DE VENTE</div>
-            <div>N° Ticket: {{ $num_vente }}</div>
-            <div class="small">Fait le : {{ $date_hr }}</div>
+            <div>Tél : {{ $contacts }}</div>
+            <div class="fw-bold fs-large" style="margin-top:4px;">FACTURE</div>
+            <div>N°: {{ $num_vente ?? '—' }}</div>
+            <div>Fait le : {{ $date_hr ?? now() }}</div>
         </div>
 
-        {!! dashedLine() !!}
+        <div class="divider"></div>
 
-        {{-- CLIENT & POINT DE VENTE --}}
+        {{-- Client & Point de vente --}}
         <div>
-            <div class="flex-row"><span>Pointe de vente :</span><span>{{ $boutique->nom_boutique ?? '' }}</span></div>
-            <div class="flex-row"><span>Client :</span><span>{{ $nom }}</span></div>
-            <div class="flex-row"><span>Contact :</span><span>{{ $contact }}</span></div>
+            <div class="flex-row"><span>Pointe de vente :</span><span>{{ $boutique->nom_boutique ?? '—' }}</span></div>
+            <div class="flex-row"><span>Client :</span><span>{{ $nom ?? '—' }}</span></div>
+            <div class="flex-row"><span>Contact :</span><span>{{ $contact ?? '—' }}</span></div>
         </div>
 
-        {!! dashedLine() !!}
+        <div class="divider"></div>
 
-        {{-- ARTICLES --}}
+        {{-- Articles --}}
         <div>
-            <div class="flex-row fw-bold small"
+            <div class="flex-row fw-bold fs-small"
                 style="border-bottom:1px dotted #000; padding-bottom:2px; margin-bottom:4px;">
                 <span>Désignation</span>
                 <span>Prix / Qté / Montant</span>
             </div>
             @php $somme = 0; @endphp
-            @foreach ($cartItems as $item)
-                @php
-                    $produit = $item['produit'] ?? $item->ShowProdNameVente($item->id_prod);
-                    $prix = $item['prix'] ?? $item->prix ?? 0;
-                    $qte = $item['qte'] ?? $item->quantite ?? 0;
-                    $montant = $qte * $prix;
-                    $somme += $montant;
-                @endphp
-                <div class="flex-row">
-                    <span>{{ $produit }}</span>
-                    <span>{{ fmt($prix) }} / {{ $qte }} / {{ fmt($montant) }}</span>
-                </div>
-            @endforeach
+            @if($operation != 'update')
+                @foreach (session('cart') as $cart)
+                    <div class="flex-row">
+                        <span>{{ $cart['produit'] }}</span>
+                        <span>{{ number_format($cart['prix']) }}{{ $cc }} / {{ $cart['qte'] }} /
+                            {{ number_format($cart['qte'] * $cart['prix']) }}{{ $cc }}</span>
+                    </div>
+                    @php $somme += $cart['qte'] * $cart['prix']; @endphp
+                @endforeach
+            @else
+                @foreach ($carts as $cart)
+                    <div class="flex-row">
+                        <span>{{ $cart->ShowProdNameVente($cart->id_prod) }}</span>
+                        <span>{{ number_format($cart->prix) }}{{ $cc }} / {{ $cart->quantite }} /
+                            {{ number_format($cart->quantite * $cart->prix) }}{{ $cc }}</span>
+                    </div>
+                    @php $somme += $cart->montant; @endphp
+                @endforeach
+            @endif
         </div>
 
-        {!! dashedLine() !!}
+        <div class="divider"></div>
 
-        {{-- TOTALS --}}
+        {{-- Totals (with reduction and TVA) --}}
         <div class="text-right">
-            <div>Sous-total : {{ fmt($total_ht) }}</div>
-            @if($reduction != 0)
-                <div>Réduction : -{{ fmt($reduction) }}</div>
+            @if(isset($reduction) && $reduction != 0)
+                <div>Réduction : {{ number_format($reduction) }}{{ $cc }}</div>
             @endif
-            <div class="fw-bold large" style="border-top:1px dashed #000; padding-top:4px; margin-top:4px;">
-                TOTAL HT : {{ fmt($total_ht - $reduction) }}
-            </div>
-            @if($tva != 0)
-                <div>TVA ({{ $tva == '0.05' ? '5%' : '18%' }}) : {{ fmt($total_tva) }}</div>
-                <div class="fw-bold xlarge">TOTAL TTC : {{ fmt($total_ttc) }}</div>
+            <div class="fw-bold">Total HT : {{ number_format($total_ht) }}{{ $cc }}</div>
+            @if(isset($tva) && $tva != 0)
+                <div>Total TVA ({{ $tva == '0.05' ? '5%' : '18%' }}) : {{ number_format($total_tva) }}{{ $cc }}</div>
+                <div class="fw-bold fs-large" style="border-top:1px dashed #000; padding-top:4px; margin-top:4px;">
+                    Total TTC : {{ number_format($total_ttc) }}{{ $cc }}
+                </div>
+            @else
+                <div class="fw-bold fs-large" style="border-top:1px dashed #000; padding-top:4px; margin-top:4px;">
+                    TOTAL : {{ number_format($total_ht) }}{{ $cc }}
+                </div>
             @endif
-            <div class="small mt-1">Arrêté à : {{ ucfirst($amountInWords) }}</div>
+            @if(isset($amountInWords))
+                <div class="fs-small" style="margin-top:4px;">Arrêté à : {{ ucfirst($amountInWords) }}</div>
+            @endif
         </div>
 
-        {!! dashedLine() !!}
+        <div class="divider"></div>
 
-        {{-- SIGNATURES --}}
-        <div class="flex-row mt-2">
+        {{-- Signature area --}}
+        <div class="signature-line">
             <span>POUR CLIENT</span>
             <span>RECEPTIONNISTE</span>
         </div>
-        <div class="flex-row mt-1">
-            <span></span>
-            <span>{{ $username ? 'Agent: ' . $username : '' }}</span>
-        </div>
-
-        {{-- FOOTER --}}
-        @if($footer)
-            <div class="text-center small mt-2" style="border-top:1px dashed #000; padding-top:6px;">
-                {!! $footer !!}
-            </div>
+        @if(isset($username))
+            <div class="text-right fs-small">{{ 'Agent: ' . $username }}</div>
         @endif
-        <div class="text-center mt-1" style="letter-spacing:2px;">- - - - - - - - - - - - - - - - - - - -</div>
+
+        {{-- Footer --}}
+        <div class="text-center fs-small mt-1" style="border-top:1px dashed #000; padding-top:6px;">
+            {!! $footer !!}
+        </div>
+        <div class="text-center" style="letter-spacing:2px; margin-top:6px;">- - - - - - - - - - - - - - - - - - - -
+        </div>
     </div>
 
-    {{-- ============================================================= --}}
-    {{-- CLEAR SESSION (same as old) --}}
-    {{-- ============================================================= --}}
+    {{-- Clear session cart if needed (your old code did it at the end) --}}
     @php
         session()->forget('cart');
         session('cart', []);
