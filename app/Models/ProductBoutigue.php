@@ -59,12 +59,12 @@ class ProductBoutigue extends Model
             throw new Exception("La quantité doit être supérieure à zéro.");
         }
 
-        //dd('Product Id : ' . $prodId, ' Boutigi : ' . $boutiqueId);
+
         $product = self::where('id_prod', $prodId)
             //->where('id_boutique', $boutiqueId)
             ->lockForUpdate()
             ->first();
-        dd($product);
+        //dd($product);
 
         if (!$product) {
             throw new Exception(
