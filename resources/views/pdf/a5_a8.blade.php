@@ -172,13 +172,8 @@
             <div class="text-center mb-1">
                 @if($logo)
                     <img src="{{ $logo }}" alt="Logo"
-                        style="max-width:100%; height:auto; max-height:60px; display:block; margin:0 auto 5px;">
+                        style="max-width:100%; height:auto; max-height:80px; display:block; margin:0 auto 5px;">
                 @endif
-                <div class="fw-bold fs-large">{{ strtoupper($entreprise) }}</div>
-                @if($address)
-                    <div>{{ strtoupper($address) }}</div>
-                @endif
-                <div>Tél : {{ $contacts }}</div>
                 <div class="fw-bold fs-large" style="margin-top:4px;">BORDEREAU DE LIVRAISON</div>
                 <div>N°: {{ $num_liv ?? '—' }}</div>
                 <div>Fait le : {{ $date_hr ?? now() }}</div>
@@ -244,13 +239,8 @@
         <div class="text-center mb-1">
             @if($logo)
                 <img src="{{ $logo }}" alt="Logo"
-                    style="max-width:100%; height:auto; max-height:60px; display:block; margin:0 auto 5px;">
+                    style="max-width:100%; height:auto; max-height:80px; display:block; margin:0 auto 5px;">
             @endif
-            <div class="fw-bold fs-large">{{ strtoupper($entreprise) }}</div>
-            @if($address)
-                <div>{{ strtoupper($address) }}</div>
-            @endif
-            <div>Tél : {{ $contacts }}</div>
             <div class="fw-bold fs-large" style="margin-top:4px;">FACTURE</div>
             <div>N°: {{ $num_vente ?? '—' }}</div>
             <div>Fait le : {{ $date_hr ?? now() }}</div>
