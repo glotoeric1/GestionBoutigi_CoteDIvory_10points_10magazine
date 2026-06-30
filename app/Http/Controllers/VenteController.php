@@ -640,7 +640,7 @@ class VenteController extends Controller
                     );
                 }
 
-                $pdf = $this->generatePdf('pdf.proforma', $pdfData, $dtSms->address ?? 'A4');
+                $pdf = $this->generatePdf('pdf.proforma', $pdfData, $dtSms->address ?? 'a4');
 
                 session()->forget('cart');
                 DB::commit();
@@ -794,7 +794,15 @@ class VenteController extends Controller
                     'Rapport de vente'
                 );
 
-                $pdf = $this->generatePdf('pdf.invoice', $pdfData, $dtSms->address ?? 'A4');
+                $path = 'pdf.invoice';
+
+                if ($dtSms->address != "a4" || $dtSms->address != "A4") {
+                    $path = 'pdf.a5_a8';
+                }
+
+                //dd($dtSms->address . ' Path : ' . $path);
+
+                $pdf = $this->generatePdf($path, $pdfData, $dtSms->address ?? $dtSms->address);
 
                 session()->flash('succes', 'Vente effectuée');
                 DB::commit();
